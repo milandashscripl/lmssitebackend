@@ -1,34 +1,44 @@
 import express from "express";
 import cors from "cors";
-import mongoose from "mongoose";
 import dotenv from "dotenv";
-dotenv.config();
-
-
 
 import { connectDB } from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 
+dotenv.config();
 
 const app = express();
+
+/* ======================
+   MIDDLEWARES
+====================== */
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: [
+      "http://localhost:5173",
+      "https://sikshyaa.netlify.app"
+    ],
     credentials: true,
   })
 );
+
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
+/* ======================
+   DATABASE
+====================== */
 connectDB();
 
+/* ======================
+   ROUTES
+====================== */
 app.use("/api/auth", authRoutes);
 
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() =>
-    app.listen(process.env.PORT || 5000, () =>
-      console.log("✅ Server running & DB connected")
-    )
-  )
-  .catch((err) => console.error("❌ DB Connection Error:", err));
+/* ======================
+   SERVER
+====================== */
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
+});
