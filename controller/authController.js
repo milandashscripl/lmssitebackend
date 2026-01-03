@@ -8,120 +8,58 @@ export const register = async (req, res) => {
   try {
     const { fullName, email, mobile, password, confirmPassword } = req.body;
 
-    // 1. Basic validation
     if (!fullName || !email || !mobile || !password || !confirmPassword) {
-      return res.status(400).json({
-        success: false,
-        message: "All fields are required",
-      });
+      return res.status(400).json({ message: "All fields required" });
     }
 
-    // 2. Mobile number validation (India)
-    if (!/^[6-9]\d{9}$/.test(mobile)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid mobile number",
-      });
-    }
-
-    // 3. Password match check
     if (password !== confirmPassword) {
-      return res.status(400).json({
-        success: false,
-        message: "Passwords do not match",
-      });
+      return res.status(400).json({ message: "Passwords do not match" });
     }
 
-    // 4. Check existing user
     const exists = await User.findOne({ email });
-    if (exists) {
-      return res.status(400).json({
-        success: false,
-        message: "Email already registered",
-      });
-    }
+    if (exists) return res.status(400).json({ message: "Email exists" });
 
-    // 5. Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 6. Create user
     const user = await User.create({
       fullName,
       email,
       mobile,
       password: hashedPassword,
-      profilePic: req.file?.path || "", // Cloudinary URL
+      profilePic: req.file?.path || "",
+      role: "student",
     });
 
-    // 7. Remove password before sending response
     const { password: _, ...safeUser } = user._doc;
 
-    res.status(201).json({
-      success: true,
-      message: "Registration successful",
-      user: safeUser,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Registration failed",
-      error: error.message,
-    });
+    res.status(201).json({ success: true, user: safeUser });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
+
 // ---------------- LOGIN ----------------
 export const login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
+  const { email, password } = req.body;
 
-    // 1. Validation
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and password are required",
-      });
-    }
+  const user = await User.findOne({ email });
+  if (!user) return res.status(404).json({ message: "User not found" });
 
-    // 2. Find user
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
+  const match = await bcrypt.compare(password, user.password);
+  if (!match) return res.status(400).json({ message: "Wrong password" });
 
-    // 3. Compare password
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) {
-      return res.status(400).json({
-        success: false,
-        message: "Incorrect password",
-      });
-    }
+  const token = jwt.sign(
+    {
+      id: user._id,
+      role: user.role,
+      instituteId: user.instituteId,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: "1h" }
+  );
 
-    // 4. Generate JWT
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+  const { password: _, ...safeUser } = user._doc;
 
-    // 5. Remove password before sending response
-    const { password: _, ...safeUser } = user._doc;
-
-    res.json({
-      success: true,
-      message: "Login successful",
-      token,
-      user: safeUser,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Login failed",
-      error: error.message,
-    });
-  }
+  res.json({ success: true, token, user: safeUser });
 };

@@ -1,12 +1,12 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-
+import superAdminRoutes from "./routes/superAdminRoutes.js";
 import { connectDB } from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
+import instituteRoutes from "./routes/instituteRoutes.js"
 
 dotenv.config();
-
 const app = express();
 
 /* ======================
@@ -34,6 +34,8 @@ connectDB();
    ROUTES
 ====================== */
 app.use("/api/auth", authRoutes);
+app.use("/api/super-admin", superAdminRoutes);
+app.use("/api/institue", instituteRoutes);
 
 /* ======================
    SERVER
